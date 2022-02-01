@@ -1,0 +1,65 @@
+#pragma kernel CSMain
+
+RWTexture2D<float4> _GBuffer;
+RWTexture2D<float4> _Result;
+
+#include "common.hlsl"
+#include "distance.hlsl"
+
+#define _RNG 1
+
+// float ambientOcclusion(in float3 p, in float3 n)
+// {
+
+//     float maxDist = 1; // _RenderParam.y;
+//     float falloff = 1.0; //_RenderParam.z;
+// 	const int nbIte = 20;
+//     const float nbIteInv = 1.0 / float(nbIte);
+//     const float rad = 1.0 - 1.0 * nbIteInv; //Hemispherical factor (self occlusion correction)
+    
+// 	float ao = 0.0;
+    
+//     for( int i=0; i<nbIte; i++ ) {
+
+//         float l = pow(hash(float(i + hash(_RNG + p.x) + hash(_RNG + p.y) ) ), 5) * maxDist;
+//         float3 rd = normalize(n + randomHemisphereDir(n, l ) * rad) * l; 
+//         ao += (l - max(map( p + rd ), 0.0)) / maxDist * falloff;
+
+//     }
+	
+//     return clamp(ao * nbIteInv, 0., 1.);
+// }
+
+float3 getNormal(in float3 p, float t)
+{
+    float2 e = float2(t, -t);
+    return normalize(
+        e.xyy * map(p + e.xyy) +
+        e.yyx * map(p + e.yyx) +
+        e.yxy * map(p + e.yxy) +
+        e.xxx * map(p + e.xxx));
+}
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float depth = _GBuffer[id.xy].x;
+    float2 uv = id.xy / _Resolution;
+
+    Ray ray = getRay(uv);
+
+    float3 color = float3(0,0,0);
+    float thresh = getPixelSize(depth) * 2;
+
+    float3 pos = ray.origin + depth * ray.direction;
+
+    float3 n = getNormal(pos, _Threshold * depth);
+    color = (float3) dot(max(n, 0), (float3)0.4);
+    float dist = map(pos);    
+    if ( dist > _Threshold * depth){
+        color.r = 1;
+
+    }
+    _Result[id.xy] = float4(color, 1);
+}

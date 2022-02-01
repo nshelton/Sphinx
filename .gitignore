@@ -1,0 +1,23 @@
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Code Editors
+/.idea
+/.vscode
+/*.csproj
+/*.sln
+*.swp
+*.vcxproj.user
+
+# Unity
+/Library
+/Logs
+/Temp
+Assets/HDRI/the_sky_is_on_fire_8k.hdr
+Assets/HDRI/autoshop_01_8k.hdr
+
+/Builds
