@@ -27,11 +27,9 @@ Ray getRay(float2 uv) {
     return result;
 }
 
-
 float getPixelSize(float d) {
     return pow(2, _Level) * d * _Threshold;
 }
-
 
 float rand(float2 co)
 {
@@ -45,7 +43,6 @@ float nrand(float2 uv, float salt)
     uv += float2(salt, SEED);
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
-
 
 //Random number [0:1] without sine
 #define HASHSCALE1 .1031

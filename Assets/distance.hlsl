@@ -53,6 +53,6 @@ float hartverdrahtet(float3 f, int i)
 }
 
 float map(float3 p ){
-    return hartverdrahtet(p, 3);
+    return hartverdrahtet(p, 2);
     // return length(p) - 0.5;
 }

@@ -14,7 +14,10 @@ public class ConeMarcher : MonoBehaviour
     public ComputeShader ShadingKernel;
     public ComputeShader ReconstructionKernel;
  
+    public Texture _matcapTexture;
     private Camera _camera;
+
+    public Light _light;
 
     RenderTexture[] _hierarchy;
     RenderTexture _reconstruction;
@@ -49,11 +52,14 @@ public class ConeMarcher : MonoBehaviour
     {
         ConeMarchingKernel.SetFloat("_Threshold", Threshold);
         ConeMarchingKernel.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
+        ConeMarchingKernel.SetVector("_ClipPlanes", new Vector2(_camera.nearClipPlane, _camera.farClipPlane));
 
+        ShadingKernel.SetTexture(0, "_Matcap", _matcapTexture);
         ShadingKernel.SetTexture(0, "_GBuffer", _hierarchy[0]);
         ShadingKernel.SetTexture(0, "_Result", _reconstruction);
         ShadingKernel.SetInt("_Level", 0);
         ShadingKernel.SetVector("_Resolution", new Vector2(_reconstruction.width, _reconstruction.height));
+        ShadingKernel.SetVector("_LightDir", _light.transform.forward);
         ShadingKernel.SetFloat("_Threshold", Threshold);
         ShadingKernel.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
     }
@@ -107,6 +113,7 @@ public class ConeMarcher : MonoBehaviour
         // Set the target and dispatch the compute shader
  
         for(int i = NUM_LEVELS-1; i >= 0; i--) {
+           
             if ( i < NUM_LEVELS-1) {
                 ConeMarchingKernel.SetTexture(0, "_Previous", _hierarchy[i+1] );
             }
