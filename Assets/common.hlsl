@@ -37,7 +37,7 @@ Ray getRay(float2 pixel) {
 }
 
 float getPixelSize(float d) {
-    return 1.2 * pow(2, _Level) * d * _PixelWidth;
+    return 1 * pow(2, _Level) * d * _PixelWidth;
 }
 
 float rand(float2 co)

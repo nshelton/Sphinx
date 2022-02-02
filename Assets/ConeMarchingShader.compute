@@ -30,5 +30,5 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         t += d;
     }
 
-    _Result[id.xy] = float4(t, hit, 0, 1);
+    _Result[id.xy] = float4(t, hit ? 1: 0 , 0, 1);
 }

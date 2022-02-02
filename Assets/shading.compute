@@ -43,7 +43,7 @@ float3 getNormal(in float3 p, float t)
 
 float softshadow( float3 ro, float3 rd, float thresh)
 {
-    float res = 2.0;
+    float res = 1.0;
     float k = 1.0;
     float t = thresh;
 
@@ -76,6 +76,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     float3 pos = ray.origin + depth * ray.direction;
 
+    // if ( id.x > _Resolution.x/2) 
     float3 n = getNormal(pos, thresh);
     float dist = map(pos);
 
@@ -92,11 +93,14 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     float ambient = 0.3 * dot(max(n, 0), (float3)0.4);
     color = s * color + ambient;
 
-    color += depth/10 * float3(0.6, 0.6, 0.3);
+    // color += depth/10 * float3(0.6, 0.6, 0.3);
     if ( status != 1) {
         // color *= 0.6;
-        color = float3(1,0,1);
+        color.r = 1;
+        // color = float3(1,0,1);
     }
+
+    // color = n * 0.5 + 0.5;
 
     _Result[id.xy] = float4(color, depth);
 }
