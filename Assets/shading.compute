@@ -1,6 +1,6 @@
 #pragma kernel CSMain
 
-RWTexture2D<float4> _GBuffer;
+Texture2D<float4> _GBuffer;
 RWTexture2D<float4> _Result;
 
 #include "common.hlsl"

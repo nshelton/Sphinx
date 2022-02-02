@@ -31,7 +31,6 @@ public class ConeMarcher : MonoBehaviour
     // level 0 is fulll res
     private int NUM_LEVELS = 8;
 
-
     public Vector4 _ParamA;
     public Vector4 _ParamB;
     public Vector4 _ParamC;
@@ -56,6 +55,8 @@ public class ConeMarcher : MonoBehaviour
      
     }
 
+    Matrix4x4 _lastCamToWorld;
+
     private void SetShaderParameters()
     {
         // var camToWorld = _camera.transform.localToWorldMatrix;
@@ -73,21 +74,7 @@ public class ConeMarcher : MonoBehaviour
         ConeMarchingKernel.SetVector("_ParamC", _ParamC);
         ConeMarchingKernel.SetVector("_ParamD", _ParamD);
 
-        ShadingKernel.SetTexture(0, "_Matcap", _matcapTexture);
-        ShadingKernel.SetTexture(0, "_GBuffer", _hierarchy[0]);
-        ShadingKernel.SetTexture(0, "_Result", _reconstruction);
-        ShadingKernel.SetInt("_Level", 0);
-        ShadingKernel.SetVector("_Resolution", new Vector2(_reconstruction.width, _reconstruction.height));
-        ShadingKernel.SetVector("_LightDir", _light.transform.forward);
-        ShadingKernel.SetFloat("_PixelWidth", pixelwidth);
-        ShadingKernel.SetMatrix("_CameraToWorld", camToWorld);
-        ShadingKernel.SetMatrix("_InverseProjection", invProjection);
-        ShadingKernel.SetVector("_ParamA", _ParamA);
-        ShadingKernel.SetVector("_ParamB", _ParamB);
-        ShadingKernel.SetVector("_ParamC", _ParamC);
-        ShadingKernel.SetVector("_ParamD", _ParamD);
-
-        RefineKernel.SetTexture(0, "+Previous", _hierarchy[0]);
+        // RefineKernel.SetTexture(0, "_Previous", _hierarchy[0]);
         RefineKernel.SetTexture(0, "_Result", _hierarchy[0]);
         RefineKernel.SetInt("_Level", 0);
         RefineKernel.SetVector("_Resolution", new Vector2(_hierarchy[0].width, _hierarchy[0].height));
@@ -100,18 +87,42 @@ public class ConeMarcher : MonoBehaviour
         RefineKernel.SetVector("_ParamC", _ParamC);
         RefineKernel.SetVector("_ParamD", _ParamD);
 
+        ShadingKernel.SetTexture(0, "_Matcap", _matcapTexture);
+        ShadingKernel.SetTexture(0, "_GBuffer", _hierarchy[0]);
+        ShadingKernel.SetTexture(0, "_Result", _currentShadedFrame);
+        ShadingKernel.SetInt("_Level", 0);
+        ShadingKernel.SetVector("_Resolution", new Vector2(_currentShadedFrame.width, _currentShadedFrame.height));
+        ShadingKernel.SetVector("_LightDir", _light.transform.forward);
+        ShadingKernel.SetFloat("_PixelWidth", pixelwidth);
+        ShadingKernel.SetMatrix("_CameraToWorld", camToWorld);
+        ShadingKernel.SetMatrix("_InverseProjection", invProjection);
+        ShadingKernel.SetVector("_ParamA", _ParamA);
+        ShadingKernel.SetVector("_ParamB", _ParamB);
+        ShadingKernel.SetVector("_ParamC", _ParamC);
+        ShadingKernel.SetVector("_ParamD", _ParamD);
 
+        ReconstructionKernel.SetTexture(0, "_Current", _currentShadedFrame);
+        ReconstructionKernel.SetTexture(0, "_Reconstruction", _reconstruction);
+        ReconstructionKernel.SetMatrix("_LastFrameCameraToWorld", _lastCamToWorld);
+        ReconstructionKernel.SetMatrix("_CameraToWorld", camToWorld);
+        ReconstructionKernel.SetMatrix("_InverseProjection", invProjection);
+
+    }
+
+    private RenderTexture createTexture(int w, int h) {
+        RenderTexture r = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+        r.enableRandomWrite = true;
+        r.Create();
+        return r;
     }
 
     private void CreateTextures()
     {
         if (_reconstruction == null || _reconstruction.width != Screen.width || _reconstruction.height != Screen.height)
         {
-            // Release render texture if we already have one
-            if (_reconstruction != null)
-            {
-                _reconstruction.Release();
-            }
+
+            _reconstruction?.Release();
+            _currentShadedFrame?.Release();
 
             if (_hierarchy != null){
                 for( int i = 0 ; i < _hierarchy.Length; i++) {
@@ -124,33 +135,23 @@ public class ConeMarcher : MonoBehaviour
                 float multiplier = 1f / Mathf.Pow(2, i);
                 int w = Mathf.CeilToInt(Screen.width * multiplier);
                 int h = Mathf.CeilToInt(Screen.height * multiplier);
-                _hierarchy[i] = new RenderTexture(w, h, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-                _hierarchy[i].enableRandomWrite = true;
-                _hierarchy[i].Create();
+                _hierarchy[i] = createTexture(w,h);
             }
 
-            _reconstruction = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            _reconstruction.enableRandomWrite = true;
-            _reconstruction.Create();
-        }
-    }
+            int sw = Screen.width;
+            int sh = Screen.height;
 
-    public void ClearRendertexture(RenderTexture renderTexture)
-    {
-        RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = renderTexture;
-        GL.Clear(true, true, Color.clear);
-        RenderTexture.active = rt;
+            _currentShadedFrame = createTexture(sw,sh);
+            _reconstruction = createTexture(sw,sh);
+            
+        }
     }
 
     private void Render(RenderTexture destination)
     {
-        // Make sure we have a current render target
         CreateTextures();
         SetShaderParameters();
 
-        // Set the target and dispatch the compute shader
- 
         for(int i = NUM_LEVELS-1; i >= 0; i--) {
            
             if ( i < NUM_LEVELS-1) {
@@ -171,19 +172,16 @@ public class ConeMarcher : MonoBehaviour
 
         // RefineKernel.Dispatch(0, tx, ty, 1);
         ShadingKernel.Dispatch(0, tx, ty, 1);
-
         ReconstructionKernel.Dispatch(0, tx, ty, 1);
 
         Graphics.Blit(_reconstruction, destination);
     }
 
-    Matrix4x4 m_worldToLastFrame;
-
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Render(destination);
         _currentSample++;
-        m_worldToLastFrame = _camera.worldToCameraMatrix;
+        _lastCamToWorld = _camera.worldToCameraMatrix;
     }
 
     private void OnValidate()
