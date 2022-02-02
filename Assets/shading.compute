@@ -41,19 +41,18 @@ float3 getNormal(in float3 p, float t)
         e.xxx * map(p + e.xxx));
 }
 
-float softshadow( float3 ro, float3 rd)
+float softshadow( float3 ro, float3 rd, float thresh)
 {
-    float res = 1.0;
-    float mint = _Threshold * 2;
+    float res = 2.0;
     float k = 1.0;
-    float t = mint;
+    float t = thresh;
 
-    for(int i = 0; i < 10; i ++ )
+    for(int i = 0; i <10; i ++ )
     {
         float3 pos = ro + rd * t;
-        float h = map(pos).x;
+        float h = map(pos);
 
-        if (h < _Threshold)
+        if (h < thresh)
             return 0.0;
             
         res = min( res, k*h/t );
@@ -69,19 +68,18 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
     float depth = _GBuffer[id.xy].x;
     float status = _GBuffer[id.xy].y;
-    float2 uv = id.xy / _Resolution;
 
-    Ray ray = getRay(uv);
+    Ray ray = getRay(id.xy);
 
     float3 color = float3(0,0,0);
-    float thresh = getPixelSize(depth) * 2;
+    float thresh = getPixelSize(depth) ;
 
     float3 pos = ray.origin + depth * ray.direction;
 
-    float3 n = getNormal(pos, _Threshold * depth);
+    float3 n = getNormal(pos, thresh);
     float dist = map(pos);
 
-    if ( dist > _Threshold * depth){
+    if ( dist > thresh){
         color = float3(0,0,0);
     }
 
@@ -89,9 +87,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     int2 px = muv * 512;
     color = _Matcap[px];
     // float ao = ambientOcclusion(pos, n);
-    float s = softshadow(pos, _LightDir);
+    float s = softshadow(pos , _LightDir, thresh);
 
-    float ambient = 0.3 *  (float3) dot(max(n, 0), (float3)0.4);
+    float ambient = 0.3 * dot(max(n, 0), (float3)0.4);
     color = s * color + ambient;
 
     color += depth/10 * float3(0.6, 0.6, 0.3);

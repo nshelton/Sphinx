@@ -13,6 +13,7 @@ public class ConeMarcher : MonoBehaviour
     public ComputeShader ConeMarchingKernel;
     public ComputeShader ShadingKernel;
     public ComputeShader ReconstructionKernel;
+    public ComputeShader RefineKernel;
  
     public Texture _matcapTexture;
     private Camera _camera;
@@ -50,8 +51,16 @@ public class ConeMarcher : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        ConeMarchingKernel.SetFloat("_Threshold", Threshold);
-        ConeMarchingKernel.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
+        // var camToWorld = _camera.transform.localToWorldMatrix;
+        var camToWorld = _camera.cameraToWorldMatrix;
+        var invProjection = _camera.projectionMatrix.inverse;
+
+        var pixelwidth = 2 * Mathf.Atan(0.5f * Mathf.Deg2Rad * _camera.fieldOfView /Screen.width) ; 
+        Debug.Log(pixelwidth);
+
+        ConeMarchingKernel.SetFloat("_PixelWidth", pixelwidth);
+        ConeMarchingKernel.SetMatrix("_CameraToWorld", camToWorld);
+        ConeMarchingKernel.SetMatrix("_InverseProjection", invProjection);
         ConeMarchingKernel.SetVector("_ClipPlanes", new Vector2(_camera.nearClipPlane, _camera.farClipPlane));
 
         ShadingKernel.SetTexture(0, "_Matcap", _matcapTexture);
@@ -60,8 +69,19 @@ public class ConeMarcher : MonoBehaviour
         ShadingKernel.SetInt("_Level", 0);
         ShadingKernel.SetVector("_Resolution", new Vector2(_reconstruction.width, _reconstruction.height));
         ShadingKernel.SetVector("_LightDir", _light.transform.forward);
-        ShadingKernel.SetFloat("_Threshold", Threshold);
-        ShadingKernel.SetMatrix("_CameraToWorld", _camera.cameraToWorldMatrix);
+        ShadingKernel.SetFloat("_PixelWidth", pixelwidth);
+        ShadingKernel.SetMatrix("_CameraToWorld", camToWorld);
+        ShadingKernel.SetMatrix("_InverseProjection", invProjection);
+
+        RefineKernel.SetTexture(0, "+Previous", _hierarchy[0]);
+        RefineKernel.SetTexture(0, "_Result", _hierarchy[0]);
+        RefineKernel.SetInt("_Level", 0);
+        RefineKernel.SetVector("_Resolution", new Vector2(_hierarchy[0].width, _hierarchy[0].height));
+        RefineKernel.SetVector("_LightDir", _light.transform.forward);
+        RefineKernel.SetFloat("_PixelWidth", pixelwidth);
+        RefineKernel.SetMatrix("_CameraToWorld", camToWorld);
+        RefineKernel.SetMatrix("_InverseProjection", invProjection);
+
     }
 
     private void CreateTextures()
@@ -130,6 +150,8 @@ public class ConeMarcher : MonoBehaviour
         int tx = Mathf.CeilToInt(_hierarchy[0].width / 8.0f);
         int ty = Mathf.CeilToInt(_hierarchy[0].height / 8.0f);
 
+        RefineKernel.Dispatch(0, tx, ty, 1);
+        
         ShadingKernel.Dispatch(0, tx, ty, 1);
 
         Graphics.Blit(_reconstruction, destination);

@@ -74,7 +74,6 @@ float2 tglad(float3 z0)
         z += p0;
         orbit += length(start - z.xyz);
         
-
     }
 
     float dS = (length(max(abs(z.xyz) - float3(1.2, 49.0, 1.4), 0.0)) - 0.06) / z.w;
@@ -83,7 +82,6 @@ float2 tglad(float3 z0)
 
 void sphereFold(inout float3 z, inout float dz)
 {
-
     float fixedRadius2 = u_paramA.x;
     float minRadius2 = u_paramA.y;
 
@@ -112,8 +110,6 @@ float4 fromtwovectors(float3 u, float3 v)
     float3 w = (1.f / m) * cross(u, v);
     return float4(w.x, w.y, w.z, 0.5f * m);
 }
-
-
 
 float2 hartverdrahtet(float3 p) {
 

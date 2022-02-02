@@ -1,0 +1,32 @@
+#pragma kernel CSMain
+
+// RWTexture2D<float4> _Previous;
+RWTexture2D<float4> _Result;
+
+#include "distance.hlsl"
+#include "common.hlsl"
+
+float2 _ClipPlanes;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    Ray ray = getRay(id.xy);
+
+    // raymarch
+    bool hit = _Result[id.xy].y > 0; 
+    float t = _Result[id.xy].x;
+    
+    if ( !hit ) {
+        for(int i = 0; i < 10; i ++) {
+            float d = map(t * ray.direction + ray.origin);
+            if ( d < getPixelSize(t) || t > _ClipPlanes.y ) {
+                hit = true;
+                break;
+            }
+            t += d;
+        }
+    }
+
+    _Result[id.xy] = float4(t, 1 , 0, 1);
+}

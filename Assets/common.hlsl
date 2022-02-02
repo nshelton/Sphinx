@@ -2,7 +2,9 @@
 float2 _Resolution;
 int _Level;
 float4x4 _CameraToWorld;
+float4x4 _InverseProjection;
 float _Threshold;
+float _PixelWidth;
 
 const float PI = 3.14159265359;
 
@@ -13,22 +15,29 @@ struct Ray
     float3 direction;
 };
 
-Ray getRay(float2 uv) {
-    
-    uv -= 0.5;
-    uv *= float2(1, _Resolution.y/_Resolution.x);
-    float3 dir = normalize(float3(uv, 1)) ;
+Ray getRay(float2 pixel) {
+
+    float2 uv = (pixel + float2(0.5, 0.5)) / _Resolution;
+
+    // Transform the camera origin to world space
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    // Invert the perspective projection of the view-space position
+    float3 direction = mul(_InverseProjection, float4(uv * 2 - 1, 0.0f, 1.0f)).xyz;
+    // Transform the direction from camera to world space and normalize
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
 
     Ray result;
 
-    result.origin = float3(_CameraToWorld._m03, _CameraToWorld._m13, _CameraToWorld._m23);
-    result.direction = mul(_CameraToWorld, float4(dir, 0)).xyz;
+    result.origin = origin;
+    result.direction = direction;
 
     return result;
 }
 
 float getPixelSize(float d) {
-    return pow(2, _Level) * d * _Threshold;
+    return 1.2 * pow(2, _Level) * d * _PixelWidth;
 }
 
 float rand(float2 co)
